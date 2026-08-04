@@ -1,0 +1,20 @@
+[project]
+name = "ai-job-copilot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Nikita-Akhade", email = "nikitaakhade30@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.52.1",
+]
+
+[project.scripts]
+ai-job-copilot = "ai_job_copilot:main"
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
