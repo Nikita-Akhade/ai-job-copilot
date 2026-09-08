@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models.job import Job
 from app.db.session import get_db
-from app.schemas.job import JobCreate, JobResponse
+from app.schemas.job import JobCreate, JobListResponse, JobResponse
 
 
 router = APIRouter(
@@ -13,11 +13,58 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[JobResponse])
-def list_jobs(db: Session = Depends(get_db)):
-    statement = select(Job).order_by(Job.created_at.desc())
+@router.get("/", response_model=JobListResponse)
+def list_jobs(
+    location: str | None = None,
+    company: str | None = None,
+    source: str | None = None,
+    page: int = 1,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+):
+    if page < 1:
+        page = 1
 
-    return db.scalars(statement).all()
+    if limit < 1:
+        limit = 20
+
+    if limit > 100:
+        limit = 100
+
+    statement = select(Job)
+
+    if location:
+        statement = statement.where(Job.location.ilike(f"%{location}%"))
+
+    if company:
+        statement = statement.where(Job.company.ilike(f"%{company}%"))
+
+    if source:
+        statement = statement.where(Job.source.ilike(f"%{source}%"))
+
+    total_statement = select(func.count()).select_from(statement.subquery())
+    total = db.scalar(total_statement) or 0
+
+    offset = (page - 1) * limit
+
+    statement = (
+        statement
+        .order_by(Job.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+
+    jobs = db.scalars(statement).all()
+
+    pages = (total + limit - 1) // limit
+
+    return JobListResponse(
+        items=jobs,
+        page=page,
+        limit=limit,
+        total=total,
+        pages=pages,
+    )
 
 
 @router.post(
