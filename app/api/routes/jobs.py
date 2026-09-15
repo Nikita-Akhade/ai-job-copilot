@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models.job import Job
@@ -15,6 +15,7 @@ router = APIRouter(
 
 @router.get("/", response_model=JobListResponse)
 def list_jobs(
+    q: str | None = None,
     location: str | None = None,
     company: str | None = None,
     source: str | None = None,
@@ -32,6 +33,15 @@ def list_jobs(
         limit = 100
 
     statement = select(Job)
+
+    if q:
+        search = f"%{q}%"
+        statement = statement.where(
+            or_(
+                Job.title.ilike(search),
+                Job.description.ilike(search),
+            )
+        )
 
     if location:
         statement = statement.where(Job.location.ilike(f"%{location}%"))
